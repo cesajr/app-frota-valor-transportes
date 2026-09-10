@@ -49,16 +49,15 @@ if menu == "✍️ Lançamentos e Correções":
     
     with st.expander("📅 Gerenciar Mês de Referência e Quilometragem", expanded=True):
         with st.form("form_fechamento"):
-            # Em telas pequenas, o Streamlit empilha automaticamente estas colunas
             c1, c2, c3, c4 = st.columns(4)
             with c1:
-                mes_ano = st.text_input("Mês/Ano (Ex: Junho/2026)", value="")
+                mes_ano = st.text_input("Mês/Ano", value="Junho/2026")
             with c2:
-                km_inicial = st.number_input("KM Inicial (Ex: 767390.0)", min_value=0.0, value=000.0)
+                km_inicial = st.number_input("KM Inicial", min_value=0.0, value=767390.0)
             with c3:
-                km_final = st.number_input("KM Final (Ex: 775338.0)", min_value=0.0, value=000.0)
+                km_final = st.number_input("KM Final", min_value=0.0, value=775338.0)
             with c4:
-                litros_diesel = st.number_input("Litros Diesel (Ex: 4007.82)", min_value=0.0, value=000.0)
+                litros_diesel = st.number_input("Litros Diesel", min_value=0.0, value=4007.82)
                 
             btn_mes = st.form_submit_button("Salvar / Atualizar Mês", use_container_width=True)
             if btn_mes:
@@ -125,7 +124,7 @@ if menu == "✍️ Lançamentos e Correções":
 
         with tab_correcao:
             st.subheader("Gerenciamento e Exclusão de Registros")
-            sub_f, sub_d = st.tabs(["Fretes Lançados", "Despesas Lançadas"])
+            sub_f, sub_d, sub_m = st.tabs(["Fretes Lançados", "Despesas Lançadas", "Meses de Referência"])
             
             with sub_f:
                 fretes_cadastrados = session.query(Frete).all()
@@ -156,6 +155,28 @@ if menu == "✍️ Lançamentos e Correções":
                             st.rerun()
                 else:
                     st.info("Nenhuma despesa cadastrada.")
+
+            with sub_m:
+                st.info("⚠️ Excluir um mês de referência removerá também todos os fretes e despesas vinculados a ele.")
+                meses_para_gerenciar = session.query(FechamentoMensal).all()
+                if meses_para_gerenciar:
+                    for mes_item in meses_para_gerenciar:
+                        cols = st.columns([3, 2, 1])
+                        cols[0].write(f"**Mês:** {mes_item.mes_ano}")
+                        cols[1].caption(f"KM: {mes_item.km_inicial:,.0f} ➔ {mes_item.km_final:,.0f}")
+                        if cols[2].button("Excluir Mês", key=f"del_mes_{mes_item.id}", use_container_width=True):
+                            # Deleta primeiro os filhos para garantir integridade relacional
+                            for f_item in mes_item.fretes:
+                                session.delete(f_item)
+                            for d_item in mes_item.despesas:
+                                session.delete(d_item)
+                            # Deleta o mês mestre
+                            session.delete(mes_item)
+                            session.commit()
+                            st.success(f"Mês {mes_item.mes_ano} excluído com sucesso!")
+                            st.rerun()
+                else:
+                    st.info("Nenhum mês cadastrado para gerenciar.")
     else:
         st.warning("Cadastre o primeiro mês de referência na seção acima.")
 
