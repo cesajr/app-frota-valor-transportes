@@ -11,7 +11,7 @@ engine = create_engine(f"sqlite:///{DB_FILE}", echo=False)
 # Configuração da base para os modelos relacionais
 Base = declarative_base()
 
-# Tabela para armazenar os dados consolidados por mês (substituindo as antigas abas da planilha)
+# Tabela para armazenar os dados consolidados por mês
 class FechamentoMensal(Base):
     __tablename__ = 'fechamentos'
     
@@ -20,6 +20,7 @@ class FechamentoMensal(Base):
     km_inicial = Column(Float, default=0.0)
     km_final = Column(Float, default=0.0)
     litros_diesel = Column(Float, default=0.0)
+    preco_litro_diesel = Column(Float, default=0.0) # Novo campo para o valor do litro em Reais
     
     # Relacionamentos com fretes e despesas
     fretes = relationship("Frete", back_populates="fechamento", cascade="all, delete-orphan")

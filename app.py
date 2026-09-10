@@ -47,34 +47,41 @@ session = obter_sessao()
 if menu == "✍️ Lançamentos e Correções":
     st.header("✍️ Lançamento e Manutenção de Dados")
     
-    with st.expander("📅 Gerenciar Mês de Referência e Quilometragem", expanded=True):
+    with st.expander("📅 Gerenciar Mês de Referência, Quilometragem e Combustível", expanded=True):
         with st.form("form_fechamento"):
-            c1, c2, c3, c4 = st.columns(4)
+            c1, c2, c3, c4, c5 = st.columns(5)
             with c1:
-                mes_ano = st.text_input("Mês/Ano", value="Junho/2026")
+                mes_ano = st.text_input("Mês/Ano (Ex: Junho/2026)", value="")
             with c2:
-                km_inicial = st.number_input("KM Inicial", min_value=0.0, value=767390.0)
+                km_inicial = st.number_input("KM Inicial", min_value=0.0, value=0.0)
             with c3:
-                km_final = st.number_input("KM Final", min_value=0.0, value=775338.0)
+                km_final = st.number_input("KM Final", min_value=0.0, value=0.0)
             with c4:
-                litros_diesel = st.number_input("Litros Diesel", min_value=0.0, value=4007.82)
+                litros_diesel = st.number_input("Litros Diesel", min_value=0.0, value=0.0)
+            with c5:
+                preco_litro = st.number_input("Preço do Litro (R$)", min_value=0.0, format="%.2f", value=0.0)
                 
             btn_mes = st.form_submit_button("Salvar / Atualizar Mês", use_container_width=True)
             if btn_mes:
-                fechamento_existente = session.query(FechamentoMensal).filter_by(mes_ano=mes_ano).first()
-                if not fechamento_existente:
-                    novo_fechamento = FechamentoMensal(
-                        mes_ano=mes_ano, km_inicial=km_inicial, km_final=km_final, litros_diesel=litros_diesel
-                    )
-                    session.add(novo_fechamento)
-                    session.commit()
-                    st.success(f"Mês {mes_ano} cadastrado com sucesso!")
+                if not mes_ano.strip():
+                    st.error("Por favor, preencha o mês de referência.")
                 else:
-                    fechamento_existente.km_inicial = km_inicial
-                    fechamento_existente.km_final = km_final
-                    fechamento_existente.litros_diesel = litros_diesel
-                    session.commit()
-                    st.info(f"Mês {mes_ano} atualizado com sucesso!")
+                    fechamento_existente = session.query(FechamentoMensal).filter_by(mes_ano=mes_ano).first()
+                    if not fechamento_existente:
+                        novo_fechamento = FechamentoMensal(
+                            mes_ano=mes_ano, km_inicial=km_inicial, km_final=km_final, 
+                            litros_diesel=litros_diesel, preco_litro_diesel=preco_litro
+                        )
+                        session.add(novo_fechamento)
+                        session.commit()
+                        st.success(f"Mês {mes_ano} cadastrado com sucesso!")
+                    else:
+                        fechamento_existente.km_inicial = km_inicial
+                        fechamento_existente.km_final = km_final
+                        fechamento_existente.litros_diesel = litros_diesel
+                        fechamento_existente.preco_litro_diesel = preco_litro
+                        session.commit()
+                        st.info(f"Mês {mes_ano} atualizado com sucesso!")
 
     st.markdown("---")
     
@@ -89,7 +96,7 @@ if menu == "✍️ Lançamentos e Correções":
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
                     mes_f = st.selectbox("Mês de Referência", lista_meses, key="f_mes")
-                    desc_f = st.text_input("Descrição do Frete", value="Soja - Rota A")
+                    desc_f = st.text_input("Descrição do Frete (Ex: Soja)", value="")
                     origem_f = st.text_input("Origem")
                 with col_f2:
                     destino_f = st.text_input("Destino")
@@ -109,7 +116,7 @@ if menu == "✍️ Lançamentos e Correções":
                 with col_d1:
                     mes_d = st.selectbox("Mês de Referência", lista_meses, key="d_mes")
                     tipo_d = st.selectbox("Tipo de Custo", ["Fixo", "Operacional"])
-                    desc_d = st.text_input("Descrição", value="Pneus / Manutenção")
+                    desc_d = st.text_input("Descrição (Ex: Pneus / Manutenção)", value="")
                 with col_d2:
                     valor_d = st.number_input("Valor (R$)", min_value=0.0, format="%.2f", key="d_val")
                     st.markdown("")
@@ -163,14 +170,12 @@ if menu == "✍️ Lançamentos e Correções":
                     for mes_item in meses_para_gerenciar:
                         cols = st.columns([3, 2, 1])
                         cols[0].write(f"**Mês:** {mes_item.mes_ano}")
-                        cols[1].caption(f"KM: {mes_item.km_inicial:,.0f} ➔ {mes_item.km_final:,.0f}")
+                        cols[1].caption(f"KM: {mes_item.km_inicial:,.0f} ➔ {mes_item.km_final:,.0f} | Diesel: {mes_item.litros_diesel:,.1f}L (R$ {mes_item.preco_litro_diesel:.2f})")
                         if cols[2].button("Excluir Mês", key=f"del_mes_{mes_item.id}", use_container_width=True):
-                            # Deleta primeiro os filhos para garantir integridade relacional
                             for f_item in mes_item.fretes:
                                 session.delete(f_item)
                             for d_item in mes_item.despesas:
                                 session.delete(d_item)
-                            # Deleta o mês mestre
                             session.delete(mes_item)
                             session.commit()
                             st.success(f"Mês {mes_item.mes_ano} excluído com sucesso!")
@@ -189,7 +194,12 @@ elif menu == "📊 Painel Executivo (BI)":
         dados_gerais = []
         for fech in fechamentos:
             total_frete = sum(f.valor_bruto for f in fech.fretes)
-            total_despesa = sum(d.valor for d in fech.despesas)
+            total_despesas_manuais = sum(d.valor for d in fech.despesas)
+            
+            # Cálculo automático do custo do diesel (Litros * Preço por Litro)
+            total_custo_diesel = fech.litros_diesel * fech.preco_litro_diesel
+            total_despesa = total_despesas_manuais + total_custo_diesel
+            
             km_rodados = fech.km_final - fech.km_inicial
             lucro_liquido = total_frete - total_despesa
             
@@ -200,11 +210,12 @@ elif menu == "📊 Painel Executivo (BI)":
                 "Mês": fech.mes_ano,
                 "KM Rodados": km_rodados,
                 "Diesel (L)": fech.litros_diesel,
+                "Custo Diesel (R$)": round(total_custo_diesel, 2),
                 "Média (KM/L)": round(media_km_l, 2),
                 "Custo/KM (R$)": round(custo_por_km, 2),
                 "Receita Bruta (R$)": total_frete,
-                "Despesas Totais (R$)": total_despesa,
-                "Lucro Líquido (R$)": lucro_liquido
+                "Despesas Totais (R$)": round(total_despesa, 2),
+                "Lucro Líquido (R$)": round(lucro_liquido, 2)
             })
             
         df_indicadores = pd.DataFrame(dados_gerais)
