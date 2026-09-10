@@ -1,0 +1,9 @@
+venv/
+env/
+*.db
+*.sqlite
+frota.db
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
