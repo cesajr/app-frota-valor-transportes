@@ -30,6 +30,14 @@ menu = st.sidebar.radio(
 st.sidebar.markdown("---")
 st.sidebar.info("💡 **Dica:** O sistema ajusta-se automaticamente para celulares, tablets e computadores.")
 
+# Rodapé institucional inserido no final da barra lateral
+st.sidebar.markdown("---")
+st.sidebar.caption(
+    "© 2026 App Gestão de Frota Valor Transportes. "
+    "Todos os direitos reservados.\n\n"
+    "**Criado por:** Paulo César Jr."
+)
+
 # Título principal adaptativo
 st.title("🚛 Controle Operacional e Financeiro de Frota")
 st.markdown("Plataforma responsiva integrada de gestão de transportes e despesas.")
